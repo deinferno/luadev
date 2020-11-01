@@ -94,7 +94,6 @@ local methods = {
 		local func = luadev[(class == "init" and "RunOnServer") or (class == "cl_init" and "RunOnClients") or (class == "shared" and "RunOnShared") or ""]
 		if func then class = path else func = luadev.RunOnShared end
 		local contents = string.format("SWEP = weapons.Get('%s') or {}; local SWEP=SWEP; SWEP.Primary = SWEP.Primary or {}; SWEP.Secondary = SWEP.Secondary or {}; %s; weapons.Register(SWEP, '%s')", class, sock:receive("*a"), class)
-		print(contents)
 		func(contents, path.."/"..who)
 		system.FlashWindow()
 	end,
