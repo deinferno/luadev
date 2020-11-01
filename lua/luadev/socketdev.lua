@@ -8,7 +8,7 @@ local function requireExists(moduleName)
 		"couldn't determine system type?"
 	)
 	local dllFiles = file.Find(string.format("lua/bin/gmcl_%s_%s.dll", moduleName, osSuffix), "GAME")
-	local luaFileExists = file.Exists(string.format("includes/modules/%s.lua", moduleName), "LCL")
+	local luaFileExists = file.Exists(string.format("includes/modules/%s.lua", moduleName), "LUA") or file.Exists(string.format("includes/modules/%s.lua", moduleName), "LCL")
 
 	return #dllFiles > 0 or luaFileExists
 end
@@ -45,43 +45,65 @@ end
 
 local methods = {
 	self = function(sock)
+		local path = sock:receive("*l")
 		local who = sock:receive("*l")
 		luadev.RunOnSelf(sock:receive("*a"), who)
 		system.FlashWindow()
 	end,
 	sv = function(sock)
+		local path = sock:receive("*l")
 		local who = sock:receive("*l")
 		luadev.RunOnServer(sock:receive("*a"), who)
 		system.FlashWindow()
 	end,
 	sh = function(sock)
+		local path = sock:receive("*l")
 		local who = sock:receive("*l")
 		luadev.RunOnShared(sock:receive("*a"), who)
 		system.FlashWindow()
 	end,
 	cl = function(sock)
+		local path = sock:receive("*l")
 		local who = sock:receive("*l")
 		luadev.RunOnClients(sock:receive("*a"), who)
 		system.FlashWindow()
 	end,
-	ent = function(sock)
-		local who = sock:receive("*l")
-		local contents = string.format("ENT = {}; local ENT=ENT; %s; scripted_ents.Register(ENT, '%s')", sock:receive("*a"), who:sub(0, -5))
-		luadev.RunOnShared(contents, who)
-		system.FlashWindow()
-	end,
-	wep = function(sock)
-		local who = sock:receive("*l")
-		local contents = string.format("SWEP = {}; local SWEP=SWEP; %s; weapons.Register(SWEP, '%s')", sock:receive("*a"), who:sub(0, -5))
-		luadev.RunOnShared(contents, who)
-		system.FlashWindow()
-	end,
 	client = function(sock)
+		local path = sock:receive("*l")
 		local who = sock:receive("*l")
 		local to = sock:receive("*l")
 		to = easylua and easylua.FindEntity(to) or player.GetByID(tonumber(to))
 		to = { to }
 		luadev.RunOnClient(sock:receive("*a"), to, who)
+		system.FlashWindow()
+	end,
+	ent = function(sock)
+		local path = sock:receive("*l")
+		local who = sock:receive("*l")
+		local class = who:sub(0, -5)
+		local func = luadev[(class == "init" and "RunOnServer") or (class == "cl_init" and "RunOnClients") or (class == "shared" and "RunOnShared") or ""]
+		if func then class = path else func = luadev.RunOnShared end
+		local contents = string.format("ENT = scripted_ents.Get('%s') or {}; local ENT=ENT; %s; scripted_ents.Register(ENT, '%s')", class, sock:receive("*a"), class)
+		func(contents, path.."/"..who)
+		system.FlashWindow()
+	end,
+	wep = function(sock)
+		local path = sock:receive("*l")
+		local who = sock:receive("*l")
+		local class = who:sub(0, -5)
+		local func = luadev[(class == "init" and "RunOnServer") or (class == "cl_init" and "RunOnClients") or (class == "shared" and "RunOnShared") or ""]
+		if func then class = path else func = luadev.RunOnShared end
+		local contents = string.format("SWEP = weapons.Get('%s') or {}; local SWEP=SWEP; SWEP.Primary = SWEP.Primary or {}; SWEP.Secondary = SWEP.Secondary or {}; %s; weapons.Register(SWEP, '%s')", class, sock:receive("*a"), class)
+		print(contents)
+		func(contents, path.."/"..who)
+		system.FlashWindow()
+	end,
+	eff = function(sock)
+		local path = sock:receive("*l")
+		local who = sock:receive("*l")
+		local class = who:sub(0, -5)
+		local contents = string.format("EFFECT = effects.Create('%s') or {}; %s; effects.Register(EFFECT, '%s')", class, sock:receive("*a"), class)
+		luadev.RunOnClients(contents, who)
 		system.FlashWindow()
 	end,
 	chatTextChanged = function(sock)
