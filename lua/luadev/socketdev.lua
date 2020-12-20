@@ -7,7 +7,7 @@ local function requireExists(moduleName)
 		or (system.IsOSX() and "osx"),
 		"couldn't determine system type?"
 	)
-	local dllFiles = file.Find(string.format("lua/bin/gmcl_%s*_%s.dll", moduleName, osSuffix), "GAME")
+	local dllFiles = file.Find(string.format("lua/bin/gmcl_%s*%s.dll", moduleName, osSuffix), "GAME")
 	local luaFileExists = file.Exists(string.format("includes/modules/%s.lua", moduleName), "LUA") or file.Exists(string.format("includes/modules/%s.lua", moduleName), "LCL")
 
 	return #dllFiles > 0 and luaFileExists
